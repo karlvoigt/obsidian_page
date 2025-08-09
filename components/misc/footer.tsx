@@ -16,7 +16,7 @@ const Footer = () => {
               Read Documentation
             </a>
             <a
-              href={`https://github.com/matthewwong525/linked-blog-starter`}
+              href={`https://github.com/nreson/linked-blog-starter`}
               className="mx-3 font-bold hover:underline"
             >
               View on GitHub
