@@ -9,78 +9,40 @@ type Props = {
   content: string,
   date?: string,
   author?: Author,
-  backlinks: { [k: string]: {
-      title: string,
-      excerpt: string,
-    }
-  }
+  backlinks: { [k: string]: { title: string, excerpt: string } }
 }
 
-function PostSingle({
-  title,
-  date,
-  author,
-  content,
-  backlinks
-}: Props) {
+function PostSingle({ title, date, author, content, backlinks }: Props) {
   return (
-    <section>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="pt-32 pb-12 md:pt-40 md:pb-20">
-          <div className="max-w-3xl mx-auto lg:max-w-none">
+    <section className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-32 pb-12">
+      <article className="w-full overflow-hidden">
+        {/* Article header */}
+        <header className="mb-10 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{title}</h1>
+        </header>
 
-            <article>
-
-              {/* Article header */}
-              <header className="max-w-3xl mx-auto mb-20">
-                {/* Title */}
-                <h1 className="h1 text-center mb-4 text-6xl">{title}</h1>
-              </header>
-
-              {/* Article content */}
-              <div className="lg:flex lg:justify-between" data-sticky-container>
-
-
-                {/* Main content */}
-                <div>
-
-                  {/* Article meta */}
-                  {(author || date) && (
-                    <>
-                      <PostMeta author={author} date={date}/>
-                      <hr className="w-16 h-px pt-px bg-gray-200 border-0 my-6" />
-                    </>
-                  )}
-
-                  {/* Article body */}
-                  <PostBody content={content}/>
-
-                </div>
-
-                {/* Sidebar */}
-                <hr className="my-10 border border-dashed lg:block"/>
-                <aside className="relative lg:block lg:w-72 lg:ml-20 shrink-0">
-                  <div>
-                    <h4 className="text-lg font-bold leading-snug tracking-tight mb-4">Backlinks</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-                      {
-                        (Object.keys(backlinks).length > 0) && (
-                            <Backlinks backlinks={backlinks} />
-                        )
-                      }
-                    </div>
-                  </div>
-                </aside>
-
-              </div>
-
-              {/* Article footer */}
-            </article>
-
+        {/* Article meta */}
+        {(author || date) && (
+          <div className="flex justify-center mb-10">
+            <PostMeta author={author} date={date}/>
           </div>
+        )}
 
+        {/* MAIN CONTENT: Centered and protected from overflow */}
+        <div className="w-full max-w-3xl mx-auto prose prose-lg break-words">
+          <PostBody content={content}/>
         </div>
-      </div>
+      </article>
+
+      {/* BACKLINKS: Moved to the bottom so they don't break layout */}
+      {Object.keys(backlinks).length > 0 && (
+        <aside className="max-w-3xl mx-auto mt-20 pt-10 border-t border-gray-200">
+          <h4 className="text-xl font-bold leading-snug tracking-tight mb-6">Mentioned In (Backlinks)</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Backlinks backlinks={backlinks} />
+          </div>
+        </aside>
+      )}
     </section>
   );
 }
