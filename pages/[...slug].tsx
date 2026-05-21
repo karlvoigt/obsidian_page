@@ -9,10 +9,11 @@ import Layout from '../components/misc/layout'
 import { NextSeo } from 'next-seo'
 import Link from 'next/link'
 import Cite from 'citation-js'
+import markdownStyles from '../components/blog/markdown-styles.module.css' // FIXED: Brought back standard markdown CSS
 
-// Sub-component for the Directory
+// Directory Sub-Component
 const ProjectDirectory = ({ groupedNotes }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-10 w-full">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-10 w-full not-prose">
     {groupedNotes && Object.entries(groupedNotes).map(([folder, notes]) => (
       <div key={folder} className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
         <h3 className="text-xl font-bold text-gray-800 capitalize mb-3 border-b pb-2">
@@ -33,35 +34,46 @@ const ProjectDirectory = ({ groupedNotes }) => (
   </div>
 );
 
-export default function Post({ post, backlinks, allPostsGrouped, globalReferences }) {
+export default function Post({ post, backlinks, allPostsGrouped, globalReferences, isHome }) {
   const router = useRouter()
   if (!router.isFallback && !post?.slug) return <ErrorPage statusCode={404} />
 
-  // Split the HTML around our injected macro tokens so we can render React components inline
-  const contentBlocks = post.content.split(/(\|\|\|DIR\|\|\||\|\|\|BIB\|\|\|)/);
+  if (isHome) {
+    const contentBlocks = post.content.split(/(\|\|\|DIR\|\|\||\|\|\|BIB\|\|\|)/);
+    
+    return (
+      <Layout>
+        <NextSeo title={post.title} />
+        <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-32 pb-20">
+          <article className="w-full">
+            <header className="mb-12 text-center border-b border-gray-200 pb-10">
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-gray-900">{post.title}</h1>
+            </header>
 
+            <div className="w-full max-w-5xl mx-auto">
+              {contentBlocks.map((block, i) => {
+                if (block === '|||DIR|||') return <ProjectDirectory key={i} groupedNotes={allPostsGrouped} />;
+                if (block === '|||BIB|||') return (
+                  <div key={i} className="mt-12 border-t border-gray-200 pt-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Global Reference List</h2>
+                    <div className="prose prose-sm text-gray-700 max-w-none break-words" dangerouslySetInnerHTML={{ __html: globalReferences }} />
+                  </div>
+                );
+                // FIXED: Wrapped markdown blocks precisely in the original CSS module to restore bold, headers, etc.
+                return <div key={i} className={markdownStyles['markdown-body']} dangerouslySetInnerHTML={{ __html: block }} />;
+              })}
+            </div>
+          </article>
+        </section>
+      </Layout>
+    )
+  }
+
+  // STANDARD NOTE UI
   return (
     <Layout>
       <NextSeo title={post.title} />
-      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-32 pb-20">
-        <article className="w-full">
-          <header className="mb-12 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{post.title}</h1>
-          </header>
-
-          {/* MAIN CONTENT: Now significantly wider (max-w-5xl) */}
-          <div className="w-full max-w-5xl mx-auto prose prose-lg max-w-none break-words">
-            {contentBlocks.map((block, i) => {
-              if (block === '|||DIR|||') return <ProjectDirectory key={i} groupedNotes={allPostsGrouped} />;
-              if (block === '|||BIB|||') return (
-                <div key={i} className="mt-10 border-t border-gray-200 pt-8 prose prose-sm text-gray-700 max-w-none" 
-                     dangerouslySetInnerHTML={{ __html: globalReferences }} />
-              );
-              return <div key={i} dangerouslySetInnerHTML={{ __html: block }} />;
-            })}
-          </div>
-        </article>
-      </section>
+      <PostSingle title={post.title} content={post.content} date={post.date} author={post.author} backlinks={backlinks} />
     </Layout>
   )
 }
@@ -73,7 +85,7 @@ export async function getStaticProps({ params }) {
   const post = await getPostBySlug(slug, ['title', 'excerpt', 'date', 'slug', 'author', 'content'])
   let content = await markdownToHtml(post.content || '', slug)
   
-  // Replace Markdown Macros with exact string tokens we can split on in React
+  // Replace Markdown Macros (ensures we catch it whether it was wrapped in a paragraph or not)
   content = content.replace(/<p>\s*{{\s*PROJECT_DIRECTORY\s*}}\s*<\/p>/g, '|||DIR|||');
   content = content.replace(/{{\s*PROJECT_DIRECTORY\s*}}/g, '|||DIR|||');
   content = content.replace(/<p>\s*{{\s*GLOBAL_BIBLIOGRAPHY\s*}}\s*<\/p>/g, '|||BIB|||');
@@ -99,7 +111,7 @@ export async function getStaticProps({ params }) {
         allPostsGrouped[folder].push({ title: p.title, slug: p.slug });
       }
       
-      // FIXED: Using Array.from to prevent TypeScript iterator error
+      // FIXED: Added Array.from to satisfy TypeScript Iterator bounds
       const matches = Array.from(p.content.matchAll(/\[@([a-zA-Z0-9_:-]+)\]/g));
       for (const match of matches) usedCitationKeys.add(match[1]);
     });
@@ -124,7 +136,8 @@ export async function getStaticProps({ params }) {
       post: { ...post, content },
       backlinks: backlinkNodes,
       allPostsGrouped,
-      globalReferences: formattedBibliography
+      globalReferences: formattedBibliography,
+      isHome 
     },
   }
 }

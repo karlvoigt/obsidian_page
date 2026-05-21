@@ -26,7 +26,7 @@ function PostSingle({ title, date, author, content, backlinks }: Props) {
           )}
         </header>
 
-        {/* MAIN CONTENT: Wider wrapper, max-w-none overrides Tailwind's artificial constraints */}
+        {/* MAIN CONTENT: Wider wrapper, max-w-none overrides Tailwind's horizontal cutoffs */}
         <div className="w-full max-w-5xl mx-auto prose prose-lg max-w-none break-words">
           <PostBody content={content}/>
         </div>
