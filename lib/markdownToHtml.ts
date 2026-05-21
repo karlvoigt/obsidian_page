@@ -1,7 +1,9 @@
 import {unified} from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import remarkRehype from 'remark-rehype'
+import rehypeKatex from 'rehype-katex'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeRewrite from 'rehype-rewrite';
 import rehypeStringify from 'rehype-stringify'
@@ -28,16 +30,19 @@ export async function markdownToHtml(markdown: string, currSlug: string) {
   const file = await unified()
     .use(remarkParse)
     .use(remarkGfm)
+    .use(remarkMath) // MUST BE BEFORE remarkRehype
     .use(remarkRehype)
-    .use(rehypeSanitize)
+    .use(rehypeKatex) // MUST BE AFTER remarkRehype
+    // Note: If equations render weirdly, temporarily comment out the next line, as sanitize sometimes strips math classes.
+    .use(rehypeSanitize) 
     .use(rehypeRewrite, {
       selector: 'a',
       rewrite: async (node) => rewriteLinkNodes(node, linkNodeMapping, currSlug)
     })
     .use(rehypeStringify)
     .process(markdown)
-  let htmlStr = file.toString()
-  return htmlStr;
+    
+  return file.toString();
 }
 
 export function getMDExcerpt(markdown: string, length: number = 500) {
