@@ -80,7 +80,7 @@ function rewriteLinkNodes (node: any, linkNodeMapping: Map<string, any>, currSlu
               children: [{
                 type: 'element',
                 tagName: 'iframe',
-                properties: { src: href, width: '100%', height: '100%', frameBorder: '0', allowFullScreen: true },
+                properties: { src: href, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
                 children: []
               }]
             }
