@@ -58,33 +58,33 @@ function rewriteLinkNodes (node: any, linkNodeMapping: Map<string, any>, currSlu
 
     // --- 1. FUSION 360 WIDE DROPDOWN ---
     if (href.includes('a360.co') || href.includes('autodesk')) {
-      node.tagName = 'div';
-      node.properties = { className: 'my-6 w-full' };
+      node.tagName = 'details';
+      node.properties = { className: 'my-6 w-full group relative' };
       node.children = [
-        originalNode,
         {
           type: 'element',
-          tagName: 'details',
-          properties: { className: 'w-full mt-3 group relative' },
+          tagName: 'summary',
+          properties: { className: 'cursor-pointer list-none flex items-center w-fit select-none' },
           children: [
             {
               type: 'element',
-              tagName: 'summary',
-              properties: { className: 'cursor-pointer inline-flex items-center px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 font-medium text-sm border border-gray-300 transition-colors list-none select-none' },
+              tagName: 'span',
+              properties: { className: 'mr-6 inline-flex items-center px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 font-medium text-sm border border-gray-300 transition-colors' },
               children: [{ type: 'text', value: 'Preview ▼' }]
             },
-            {
-              type: 'element',
-              tagName: 'div',
-              properties: { className: 'w-full aspect-video mt-4 border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50' },
-              children: [{
-                type: 'element',
-                tagName: 'iframe',
-                properties: { src: href, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
-                children: []
-              }]
-            }
+            originalNode
           ]
+        },
+        {
+          type: 'element',
+          tagName: 'div',
+          properties: { className: 'w-full aspect-video mt-4 border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50' },
+          children: [{
+            type: 'element',
+            tagName: 'iframe',
+            properties: { src: href, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
+            children: []
+          }]
         }
       ];
       return; 
