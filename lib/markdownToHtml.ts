@@ -76,11 +76,11 @@ function rewriteLinkNodes (node: any, linkNodeMapping: Map<string, any>, currSlu
             {
               type: 'element',
               tagName: 'div',
-              properties: { className: 'relative w-full pt-[56.25%] mt-4 border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50' },
+              properties: { className: 'w-full aspect-video mt-4 border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50' },
               children: [{
                 type: 'element',
                 tagName: 'iframe',
-                properties: { src: href, className: 'absolute top-0 left-0 w-full h-full', frameBorder: '0', allowFullScreen: true },
+                properties: { src: href, width: '100%', height: '100%', frameBorder: '0', allowFullScreen: true },
                 children: []
               }]
             }
