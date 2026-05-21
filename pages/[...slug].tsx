@@ -108,7 +108,7 @@ export async function getStaticProps({ params }) {
       }
       
       // 2. Extract Pandoc Citations from raw markdown (e.g., [@author2020])
-      const matches = p.content.matchAll(/\[@([a-zA-Z0-9_:-]+)\]/g);
+      const matches = Array.from(p.content.matchAll(/\[@([a-zA-Z0-9_:-]+)\]/g));
       for (const match of matches) usedCitationKeys.add(match[1]);
     });
 
