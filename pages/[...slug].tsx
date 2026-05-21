@@ -135,9 +135,10 @@ const ProjectSidebar = ({ data }: { data: any }) => {
   );
 };
 
-// Backlinks Sidebar Sub-Component
-const BacklinksSidebar = ({ backlinks }: { backlinks: any }) => {
+// Right Sidebar Sub-Component (Tabs)
+const RightSidebar = ({ backlinks, forwardlinks, outline }: { backlinks: any, forwardlinks: any, outline: any[] }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('outline'); // 'outline', 'backlinks', 'forwardlinks'
 
   useEffect(() => {
     const toggle = () => setIsOpen(prev => !prev);
@@ -147,23 +148,109 @@ const BacklinksSidebar = ({ backlinks }: { backlinks: any }) => {
 
   return (
     <div className={`fixed inset-y-0 right-0 z-40 w-80 bg-gray-50 border-l border-gray-200 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col pt-24 pb-10 overflow-hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+       
+       {/* Tabs Header */}
+       <div className="px-5 mb-4 border-b border-gray-200 flex space-x-4">
+         <button onClick={() => setActiveTab('outline')} className={`pb-2 text-xs font-bold uppercase tracking-wider ${activeTab === 'outline' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800'}`}>Outline</button>
+         <button onClick={() => setActiveTab('backlinks')} className={`pb-2 text-xs font-bold uppercase tracking-wider ${activeTab === 'backlinks' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800'}`}>Backlinks</button>
+         <button onClick={() => setActiveTab('forwardlinks')} className={`pb-2 text-xs font-bold uppercase tracking-wider ${activeTab === 'forwardlinks' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800'}`}>Forward</button>
+       </div>
+
        <div className="flex-1 overflow-y-auto px-5">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Linked Mentions</h3>
-          {Object.keys(backlinks).length === 0 ? (
-            <p className="text-sm text-gray-400">No backlinks found.</p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <Backlinks backlinks={backlinks} />
+          
+          {/* Outline Tab */}
+          {activeTab === 'outline' && (
+            <div className="space-y-1">
+              {outline.length === 0 ? <p className="text-sm text-gray-400">No outline available.</p> : (
+                <ul className="space-y-1.5">
+                  {outline.map((heading, i) => (
+                    <li key={i} style={{ marginLeft: `${(heading.level - 1) * 12}px` }}>
+                      <a href={`#${heading.id}`} className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                        {heading.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
+          )}
+
+          {/* Backlinks Tab */}
+          {activeTab === 'backlinks' && (
+             Object.keys(backlinks).length === 0 ? <p className="text-sm text-gray-400">No backlinks found.</p> : <div className="flex flex-col gap-4"><Backlinks backlinks={backlinks} /></div>
+          )}
+
+          {/* Forward links Tab */}
+          {activeTab === 'forwardlinks' && (
+             Object.keys(forwardlinks).length === 0 ? <p className="text-sm text-gray-400">No forward links found.</p> : <div className="flex flex-col gap-4"><Backlinks backlinks={forwardlinks} /></div>
           )}
        </div>
     </div>
   );
 };
 
-export default function Post({ post, backlinks, allPostsGrouped, globalReferences, isHome, explorerData }) {
+export default function Post({ post, backlinks, forwardlinks, allPostsGrouped, globalReferences, isHome, explorerData, outline }) {
   const router = useRouter()
   if (!router.isFallback && !post?.slug) return <ErrorPage statusCode={404} />
+
+  // Collapsible Headings Initializer
+  useEffect(() => {
+    const article = document.querySelector('article');
+    if (!article) return;
+
+    const headings = Array.from(article.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    headings.forEach((heading: any) => {
+      // Prevent re-attaching on soft re-renders
+      if (heading.querySelector('.collapse-indicator')) return;
+
+      heading.style.cursor = 'pointer';
+      heading.title = 'Click to collapse/expand';
+      
+      const indicator = document.createElement('span');
+      indicator.innerHTML = '&#9660;'; // Down-pointing triangle
+      indicator.className = 'collapse-indicator inline-block ml-2 text-gray-400 text-[10px] transition-transform duration-200';
+      heading.appendChild(indicator);
+
+      heading.addEventListener('click', () => {
+        const isCollapsed = heading.classList.toggle('is-collapsed');
+        indicator.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+
+        const level = parseInt(heading.tagName[1]);
+        let sibling = heading.nextElementSibling;
+        let skipUntilLevel = 0;
+        
+        while (sibling) {
+          const isHeading = /^H[1-6]$/.test(sibling.tagName);
+          let siblingLevel = 10;
+
+          if (isHeading) {
+            siblingLevel = parseInt(sibling.tagName[1]);
+            if (siblingLevel <= level) break; // Reached next section of equal/higher rank
+          }
+          
+          if (isCollapsed) {
+            sibling.style.display = 'none';
+          } else {
+            // Expanding: check if we are currently skipping a nested collapsed section
+            if (skipUntilLevel > 0) {
+              if (isHeading && siblingLevel <= skipUntilLevel) {
+                skipUntilLevel = 0; // Exited the collapsed sub-section
+              }
+            }
+
+            if (skipUntilLevel === 0) {
+              sibling.style.display = '';
+              // If this sibling is a collapsed heading itself, skip its children
+              if (isHeading && sibling.classList.contains('is-collapsed')) {
+                skipUntilLevel = siblingLevel;
+              }
+            }
+          }
+          sibling = sibling.nextElementSibling;
+        }
+      });
+    });
+  }, [post?.slug]);
 
   if (isHome) {
     const contentBlocks = post.content.split(/(\|\|\|DIR\|\|\||\|\|\|BIB\|\|\|)/);
@@ -171,7 +258,7 @@ export default function Post({ post, backlinks, allPostsGrouped, globalReference
     return (
       <Layout hasSidebars={true}>
         <ProjectSidebar data={explorerData} />
-        <BacklinksSidebar backlinks={backlinks} />
+        <RightSidebar backlinks={backlinks} forwardlinks={forwardlinks} outline={outline} />
         <NextSeo title={post.title} />
         <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-32 pb-20">
           <article className="w-full">
@@ -202,7 +289,7 @@ export default function Post({ post, backlinks, allPostsGrouped, globalReference
   return (
     <Layout hasSidebars={true}>
       <ProjectSidebar data={explorerData} />
-      <BacklinksSidebar backlinks={backlinks} />
+      <RightSidebar backlinks={backlinks} forwardlinks={forwardlinks} outline={outline} />
       <NextSeo title={post.title} />
       <PostSingle title={post.title} content={post.content} date={post.date} author={post.author} backlinks={backlinks} />
     </Layout>
@@ -226,6 +313,33 @@ export async function getStaticProps({ params }) {
   const linkMapping = await getLinksMapping()
   const backlinks = Object.keys(linkMapping).filter(k => linkMapping[k].includes(post.slug) && k !== post.slug)
   const backlinkNodes = Object.fromEntries(await Promise.all(backlinks.map(async (s) => [s, await getPostBySlug(s, ['title', 'excerpt'])])));
+
+  // Extract Forward Links (gracefully handling missing/dangling links)
+  const forwardlinksSlugs = linkMapping[post.slug] || [];
+  const forwardlinkNodes = {};
+  for (const s of forwardlinksSlugs) {
+    try {
+      forwardlinkNodes[s] = await getPostBySlug(s, ['title', 'excerpt']);
+    } catch (e) {
+      // Ignore dangling links to notes that haven't been created yet
+    }
+  }
+
+  // Extract Document Outline
+  const outline = [];
+  const headingRegex = /^(#{1,6})\s+(.*)$/gm;
+  let match;
+  
+  const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+
+  while ((match = headingRegex.exec(post.content || '')) !== null) {
+    const rawTitle = match[2].replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/[*_~`]/g, '');
+    outline.push({
+      level: match[1].length,
+      title: rawTitle,
+      id: slugify(rawTitle)
+    });
+  }
 
   let allPostsGrouped = null;
   let formattedBibliography = null;
@@ -267,10 +381,12 @@ export async function getStaticProps({ params }) {
     props: {
       post: { ...post, content },
       backlinks: backlinkNodes,
+      forwardlinks: forwardlinkNodes,
       allPostsGrouped,
       globalReferences: formattedBibliography,
       isHome,
-      explorerData
+      explorerData,
+      outline
     },
   }
 }

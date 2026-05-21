@@ -31,8 +31,8 @@ export async function markdownToHtml(markdown: string, currSlug: string) {
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeKatex)
     .use(rehypeRewrite, {
-      selector: 'a',
-      rewrite: async (node) => rewriteLinkNodes(node, linkNodeMapping, currSlug)
+      selector: 'a, h1, h2, h3, h4, h5, h6',
+      rewrite: async (node) => rewriteNodes(node, linkNodeMapping, currSlug)
     })
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(markdown)
@@ -51,7 +51,24 @@ export function createNoteNode(title: string, content: string) {
   return fromHtml(htmlStr);
 }
 
-function rewriteLinkNodes (node: any, linkNodeMapping: Map<string, any>, currSlug: string) {
+function slugify(text: string) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+}
+
+function getText(node: any): string {
+  if (node.type === 'text') return node.value || '';
+  if (node.children) return node.children.map(getText).join('');
+  return '';
+}
+
+function rewriteNodes (node: any, linkNodeMapping: Map<string, any>, currSlug: string) {
+  if (/^h[1-6]$/.test(node.tagName)) {
+    const text = getText(node);
+    node.properties = node.properties || {};
+    node.properties.id = slugify(text);
+    return;
+  }
+
   if (node.type === 'element' && node.tagName === 'a') {
     const href = node.properties?.href || '';
     const originalNode = { ...node };
