@@ -27,7 +27,7 @@ export async function markdownToHtml(markdown: string, currSlug: string) {
     linkNodeMapping[l] = node
   }
 
-  const file = await unified()
+  const file = await (unified() as any)
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkMath) // MUST BE BEFORE remarkRehype
