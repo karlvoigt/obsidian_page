@@ -108,3 +108,45 @@ export function updateMarkdownLinks(markdown: string, currSlug: string) {
   });
   return markdown
 }
+
+export function getProjectExplorerData() {
+  const allPosts = getAllPosts(['title', 'slug', 'content']);
+  const data = {
+    markdown: {} as Record<string, {title: string, url: string}[]>,
+    fusion: [] as {title: string, url: string}[],
+    github: [] as {title: string, url: string}[],
+    pdf: [] as {title: string, url: string}[]
+  };
+
+  const seenFusion = new Set<string>();
+  const seenGithub = new Set<string>();
+  const seenPdf = new Set<string>();
+
+  allPosts.forEach((p) => {
+    // 1. Group Markdown Files
+    if (p.slug !== 'home' && !p.slug.includes('attachments/') && !p.slug.includes('public/')) {
+      const parts = p.slug.split(path.sep);
+      const folder = parts.length > 1 ? parts[0] : 'Root';
+      if (!data.markdown[folder]) data.markdown[folder] = [];
+      data.markdown[folder].push({ title: p.title || p.slug.split('/').pop() || '', url: `/${p.slug}` });
+    }
+
+    // 2. Extract External/Special Links
+    const mdLink = /\[([^\[\]]+)\]\(([^\(\)]+)\)/g;
+    const matches = Array.from((p.content || '').matchAll(mdLink));
+    for (const m of matches) {
+      const text = m[1];
+      const href = m[2];
+
+      if (href.includes('a360.co') || href.includes('autodesk')) {
+        if (!seenFusion.has(href)) { seenFusion.add(href); data.fusion.push({ title: text, url: href }); }
+      } else if (href.includes('github.com')) {
+        if (!seenGithub.has(href)) { seenGithub.add(href); data.github.push({ title: text, url: href }); }
+      } else if (href.endsWith('.pdf')) {
+        if (!seenPdf.has(href)) { seenPdf.add(href); data.pdf.push({ title: text, url: href }); }
+      }
+    }
+  });
+
+  return data;
+}

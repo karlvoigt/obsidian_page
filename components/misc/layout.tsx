@@ -4,12 +4,13 @@ import Header from './header'
 
 type Props = {
   children: React.ReactNode
+  hasSidebars?: boolean
 }
 
-const Layout = ({ children }: Props) => {
+const Layout = ({ children, hasSidebars }: Props) => {
   return (
     <div className="flex flex-col min-h-screen overflow-hidden">
-      <Header />
+      <Header hasSidebars={hasSidebars} />
       <main className="grow">
         {children}
       </main>

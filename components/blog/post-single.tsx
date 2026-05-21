@@ -31,16 +31,6 @@ function PostSingle({ title, date, author, content, backlinks }: Props) {
           <PostBody content={content}/>
         </div>
       </article>
-
-      {/* BACKLINKS */}
-      {Object.keys(backlinks).length > 0 && (
-        <aside className="w-full max-w-5xl mx-auto mt-20 pt-10 border-t border-gray-200">
-          <h4 className="text-xl font-bold leading-snug tracking-tight mb-6">Mentioned In (Backlinks)</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Backlinks backlinks={backlinks} />
-          </div>
-        </aside>
-      )}
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router'
 import ErrorPage from 'next/error'
-import { getPostBySlug, getAllPosts, getLinksMapping } from '../lib/api'
+import { useState, useEffect } from 'react'
+import { getPostBySlug, getAllPosts, getLinksMapping, getProjectExplorerData } from '../lib/api'
 import { markdownToHtml } from '../lib/markdownToHtml'
 import path from 'path'
 import fs from 'fs'
@@ -9,6 +10,7 @@ import Layout from '../components/misc/layout'
 import { NextSeo } from 'next-seo'
 import Link from 'next/link'
 import Cite from 'citation-js'
+import Backlinks from '../components/misc/backlinks'
 import markdownStyles from '../components/blog/markdown-styles.module.css' // FIXED: Brought back standard markdown CSS
 
 // Directory Sub-Component
@@ -34,7 +36,132 @@ const ProjectDirectory = ({ groupedNotes }) => (
   </div>
 );
 
-export default function Post({ post, backlinks, allPostsGrouped, globalReferences, isHome }) {
+// Collapsible Section Helper Component
+const CollapsibleSection = ({ title, children, defaultOpen = true }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="mb-2">
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="flex items-center justify-between w-full text-left mb-2 group"
+      >
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider group-hover:text-gray-800 transition-colors">{title}</h3>
+        <span className="text-gray-400 text-[10px] transform transition-transform duration-200" style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+      </button>
+      {isOpen && <div className="space-y-1 mb-4">{children}</div>}
+    </div>
+  );
+};
+
+// Sidebar Sub-Component
+const ProjectSidebar = ({ data }: { data: any }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const toggle = () => setIsOpen(prev => !prev);
+    window.addEventListener('toggleLeftSidebar', toggle);
+    return () => window.removeEventListener('toggleLeftSidebar', toggle);
+  }, []);
+
+  return (
+    <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-gray-50 border-r border-gray-200 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col pt-24 pb-10 overflow-hidden ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+       <div className="flex-1 overflow-y-auto px-5 space-y-2">
+        {/* Markdown Files */}
+            {data?.markdown && Object.keys(data.markdown).length > 0 && (
+            <CollapsibleSection title="Vault Pages">
+              {Object.entries(data.markdown).map(([folder, links]) => (
+                <div key={folder} className="mb-3">
+                   <h4 className="text-sm font-semibold text-gray-800 capitalize mb-1">{folder === 'Root' ? 'General' : folder.replace('-', ' ')}</h4>
+                   <ul className="ml-2 space-y-1 border-l-2 border-gray-200 pl-2">
+                      {(links as any[]).map(link => (
+                        <li key={link.url}>
+                          <Link href={link.url} className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                            {link.title}
+                          </Link>
+                        </li>
+                      ))}
+                   </ul>
+                </div>
+              ))}
+            </CollapsibleSection>
+          )}
+
+            {/* Fusion Files */}
+            {data?.fusion?.length > 0 && (
+              <CollapsibleSection title="Fusion 360 Models">
+               <ul className="space-y-1">
+                 {data.fusion.map((link: any, i: number) => (
+                   <li key={i}>
+                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                       {link.title}
+                     </a>
+                   </li>
+                 ))}
+               </ul>
+            </CollapsibleSection>
+            )}
+
+            {/* GitHub Links */}
+            {data?.github?.length > 0 && (
+              <CollapsibleSection title="GitHub Repositories">
+               <ul className="space-y-1">
+                 {data.github.map((link: any, i: number) => (
+                   <li key={i}>
+                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                       {link.title}
+                     </a>
+                   </li>
+                 ))}
+               </ul>
+            </CollapsibleSection>
+            )}
+
+            {/* PDFs */}
+            {data?.pdf?.length > 0 && (
+             <CollapsibleSection title="Datasheets">
+               <ul className="space-y-1">
+                 {data.pdf.map((link: any, i: number) => (
+                   <li key={i}>
+                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                       {link.title}
+                     </a>
+                   </li>
+                 ))}
+               </ul>
+            </CollapsibleSection>
+            )}
+         </div>
+      </div>
+  );
+};
+
+// Backlinks Sidebar Sub-Component
+const BacklinksSidebar = ({ backlinks }: { backlinks: any }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const toggle = () => setIsOpen(prev => !prev);
+    window.addEventListener('toggleRightSidebar', toggle);
+    return () => window.removeEventListener('toggleRightSidebar', toggle);
+  }, []);
+
+  return (
+    <div className={`fixed inset-y-0 right-0 z-40 w-80 bg-gray-50 border-l border-gray-200 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col pt-24 pb-10 overflow-hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+       <div className="flex-1 overflow-y-auto px-5">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Linked Mentions</h3>
+          {Object.keys(backlinks).length === 0 ? (
+            <p className="text-sm text-gray-400">No backlinks found.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <Backlinks backlinks={backlinks} />
+            </div>
+          )}
+       </div>
+    </div>
+  );
+};
+
+export default function Post({ post, backlinks, allPostsGrouped, globalReferences, isHome, explorerData }) {
   const router = useRouter()
   if (!router.isFallback && !post?.slug) return <ErrorPage statusCode={404} />
 
@@ -42,7 +169,9 @@ export default function Post({ post, backlinks, allPostsGrouped, globalReference
     const contentBlocks = post.content.split(/(\|\|\|DIR\|\|\||\|\|\|BIB\|\|\|)/);
     
     return (
-      <Layout>
+      <Layout hasSidebars={true}>
+        <ProjectSidebar data={explorerData} />
+        <BacklinksSidebar backlinks={backlinks} />
         <NextSeo title={post.title} />
         <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-32 pb-20">
           <article className="w-full">
@@ -71,7 +200,9 @@ export default function Post({ post, backlinks, allPostsGrouped, globalReference
 
   // STANDARD NOTE UI
   return (
-    <Layout>
+    <Layout hasSidebars={true}>
+      <ProjectSidebar data={explorerData} />
+      <BacklinksSidebar backlinks={backlinks} />
       <NextSeo title={post.title} />
       <PostSingle title={post.title} content={post.content} date={post.date} author={post.author} backlinks={backlinks} />
     </Layout>
@@ -91,6 +222,7 @@ export async function getStaticProps({ params }) {
   content = content.replace(/<p>\s*{{\s*GLOBAL_BIBLIOGRAPHY\s*}}\s*<\/p>/g, '|||BIB|||');
   content = content.replace(/{{\s*GLOBAL_BIBLIOGRAPHY\s*}}/g, '|||BIB|||');
 
+  const explorerData = getProjectExplorerData();
   const linkMapping = await getLinksMapping()
   const backlinks = Object.keys(linkMapping).filter(k => linkMapping[k].includes(post.slug) && k !== post.slug)
   const backlinkNodes = Object.fromEntries(await Promise.all(backlinks.map(async (s) => [s, await getPostBySlug(s, ['title', 'excerpt'])])));
@@ -137,7 +269,8 @@ export async function getStaticProps({ params }) {
       backlinks: backlinkNodes,
       allPostsGrouped,
       globalReferences: formattedBibliography,
-      isHome 
+      isHome,
+      explorerData
     },
   }
 }
