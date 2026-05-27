@@ -32,7 +32,7 @@ export async function markdownToHtml(markdown: string, currSlug: string) {
     .use(rehypeKatex)
     .use(rehypeRewrite, {
       selector: 'a, h1, h2, h3, h4, h5, h6',
-      rewrite: async (node) => rewriteNodes(node, linkNodeMapping, currSlug)
+      rewrite: async (node, index, parent) => rewriteNodes(node, index, parent, linkNodeMapping, currSlug)
     })
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(markdown)
@@ -61,7 +61,7 @@ function getText(node: any): string {
   return '';
 }
 
-function rewriteNodes (node: any, linkNodeMapping: Map<string, any>, currSlug: string) {
+function rewriteNodes (node: any, index: any, parent: any, linkNodeMapping: Map<string, any>, currSlug: string) {
   if (/^h[1-6]$/.test(node.tagName)) {
     const text = getText(node);
     node.properties = node.properties || {};
@@ -145,6 +145,62 @@ function rewriteNodes (node: any, linkNodeMapping: Map<string, any>, currSlug: s
       node.properties.target = '_blank';
       node.properties.rel = 'noopener noreferrer';
       return; 
+    }
+
+    // --- 5. GOOGLE SHEETS INLINE + END-OF-PARAGRAPH EXPAND ---
+    if (href.includes('docs.google.com/spreadsheets')) {
+      const sheetId = 'sheet-' + Math.random().toString(36).substr(2, 9);
+      
+      let iframeUrl = href;
+      if (!iframeUrl.includes('widget=')) {
+        iframeUrl += (iframeUrl.includes('?') ? '&' : '?') + 'widget=true&headers=false';
+      }
+
+      originalNode.properties = { ...originalNode.properties, className: 'text-blue-600 hover:underline mr-2' };
+      
+      node.tagName = 'span';
+      node.properties = { className: 'inline-flex items-center' };
+      node.children = [
+        originalNode,
+        {
+          type: 'element',
+          tagName: 'label',
+          properties: { 
+            htmlFor: sheetId, 
+            className: 'cursor-pointer inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium border border-green-200 hover:bg-green-100 transition-colors select-none',
+            title: 'Toggle Sheet Preview'
+          },
+          children: [{ type: 'text', value: '📊 Preview' }]
+        }
+      ];
+
+      if (parent && parent.children) {
+        parent.children.push({
+          type: 'element',
+          tagName: 'span',
+          properties: { className: 'block w-full mt-4' },
+          children: [
+            {
+              type: 'element',
+              tagName: 'input',
+              properties: { type: 'checkbox', id: sheetId, className: 'hidden peer' },
+              children: []
+            },
+            {
+              type: 'element',
+              tagName: 'span',
+              properties: { className: 'hidden peer-checked:block w-full aspect-video border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50 mb-4' },
+              children: [{
+                type: 'element',
+                tagName: 'iframe',
+                properties: { src: iframeUrl, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
+                children: []
+              }]
+            }
+          ]
+        });
+      }
+      return;
     }
 
     // --- 4. STANDARD INTERNAL LINK PREVIEWS ---

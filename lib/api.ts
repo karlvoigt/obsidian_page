@@ -115,12 +115,14 @@ export function getProjectExplorerData() {
     markdown: {} as Record<string, {title: string, url: string}[]>,
     fusion: [] as {title: string, url: string}[],
     github: [] as {title: string, url: string}[],
-    pdf: [] as {title: string, url: string}[]
+    pdf: [] as {title: string, url: string}[],
+    sheets: [] as {title: string, url: string}[]
   };
 
   const seenFusion = new Set<string>();
   const seenGithub = new Set<string>();
   const seenPdf = new Set<string>();
+  const seenSheets = new Set<string>();
 
   allPosts.forEach((p) => {
     // 1. Group Markdown Files
@@ -144,6 +146,8 @@ export function getProjectExplorerData() {
         if (!seenGithub.has(href)) { seenGithub.add(href); data.github.push({ title: text, url: href }); }
       } else if (href.endsWith('.pdf')) {
         if (!seenPdf.has(href)) { seenPdf.add(href); data.pdf.push({ title: text, url: href }); }
+      } else if (href.includes('docs.google.com/spreadsheets')) {
+        if (!seenSheets.has(href)) { seenSheets.add(href); data.sheets.push({ title: text, url: href }); }
       }
     }
   });

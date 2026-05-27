@@ -116,6 +116,21 @@ const ProjectSidebar = ({ data }: { data: any }) => {
             </CollapsibleSection>
             )}
 
+            {/* Google Sheets */}
+            {data?.sheets?.length > 0 && (
+              <CollapsibleSection title="Google Sheets">
+               <ul className="space-y-1">
+                 {data.sheets.map((link: any, i: number) => (
+                   <li key={i}>
+                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                       {link.title}
+                     </a>
+                   </li>
+                 ))}
+               </ul>
+            </CollapsibleSection>
+            )}
+
             {/* PDFs */}
             {data?.pdf?.length > 0 && (
              <CollapsibleSection title="Datasheets">
