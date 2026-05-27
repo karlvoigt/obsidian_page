@@ -73,37 +73,65 @@ function rewriteNodes (node: any, index: any, parent: any, linkNodeMapping: Map<
     const href = node.properties?.href || '';
     const originalNode = { ...node };
 
-    // --- 1. FUSION 360 WIDE DROPDOWN ---
+    // --- 1. FUSION 360 INLINE + END-OF-PARAGRAPH EXPAND ---
     if (href.includes('a360.co') || href.includes('autodesk')) {
-      node.tagName = 'details';
-      node.properties = { className: 'my-6 w-full group relative' };
+      const fusionId = 'fusion-' + Math.random().toString(36).substr(2, 9);
+      
+      originalNode.properties = { ...originalNode.properties, className: 'text-blue-600 hover:underline mr-2' };
+      
+      node.tagName = 'span';
+      node.properties = { className: 'inline' };
       node.children = [
         {
           type: 'element',
-          tagName: 'summary',
-          properties: { className: 'cursor-pointer list-none flex items-center w-fit select-none' },
+          tagName: 'input',
+          properties: { type: 'checkbox', id: fusionId, className: 'hidden' },
+          children: []
+        },
+        originalNode,
+        {
+          type: 'element',
+          tagName: 'label',
+          properties: { 
+            htmlFor: fusionId, 
+            className: `btn-${fusionId} cursor-pointer inline-flex items-center px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium border border-indigo-200 hover:bg-indigo-100 transition-colors select-none`,
+            title: 'Toggle 3D Model Preview'
+          },
+          children: [
+            { type: 'element', tagName: 'span', properties: { className: 'text-preview inline' }, children: [{ type: 'text', value: '🧊 Preview' }] },
+            { type: 'element', tagName: 'span', properties: { className: 'text-close hidden' }, children: [{ type: 'text', value: '🧊 Close' }] }
+          ]
+        }
+      ];
+
+      if (parent && parent.children) {
+        parent.children.push({
+          type: 'element',
+          tagName: 'span',
+          properties: { className: `iframe-${fusionId} hidden w-full aspect-video border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50 mb-4 mt-4` },
           children: [
             {
               type: 'element',
-              tagName: 'span',
-              properties: { className: 'mr-6 inline-flex items-center px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 font-medium text-sm border border-gray-300 transition-colors' },
-              children: [{ type: 'text', value: 'Preview ▼' }]
+              tagName: 'style',
+              children: [{
+                type: 'text',
+                value: `
+                  body:has(#${fusionId}:checked) .btn-${fusionId} { background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important; }
+                  body:has(#${fusionId}:checked) .btn-${fusionId} .text-preview { display: none !important; }
+                  body:has(#${fusionId}:checked) .btn-${fusionId} .text-close { display: inline !important; }
+                  body:has(#${fusionId}:checked) .iframe-${fusionId} { display: block !important; }
+                `
+              }]
             },
-            originalNode
+            {
+              type: 'element',
+              tagName: 'iframe',
+              properties: { src: href, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
+              children: []
+            }
           ]
-        },
-        {
-          type: 'element',
-          tagName: 'div',
-          properties: { className: 'w-full aspect-video mt-4 border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50' },
-          children: [{
-            type: 'element',
-            tagName: 'iframe',
-            properties: { src: href, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
-            children: []
-          }]
-        }
-      ];
+        });
+      }
       return; 
     }
 
