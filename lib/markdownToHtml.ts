@@ -152,6 +152,9 @@ function rewriteNodes (node: any, index: any, parent: any, linkNodeMapping: Map<
       const sheetId = 'sheet-' + Math.random().toString(36).substr(2, 9);
       
       let iframeUrl = href;
+      if (iframeUrl.includes('/edit')) {
+        iframeUrl = iframeUrl.split('/edit')[0] + '/htmlembed';
+      }
       if (!iframeUrl.includes('widget=')) {
         iframeUrl += (iframeUrl.includes('?') ? '&' : '?') + 'widget=true&headers=false';
       }
@@ -159,18 +162,27 @@ function rewriteNodes (node: any, index: any, parent: any, linkNodeMapping: Map<
       originalNode.properties = { ...originalNode.properties, className: 'text-blue-600 hover:underline mr-2' };
       
       node.tagName = 'span';
-      node.properties = { className: 'inline-flex items-center' };
+      node.properties = { className: 'inline' };
       node.children = [
+        {
+          type: 'element',
+          tagName: 'input',
+          properties: { type: 'checkbox', id: sheetId, className: 'hidden' },
+          children: []
+        },
         originalNode,
         {
           type: 'element',
           tagName: 'label',
           properties: { 
             htmlFor: sheetId, 
-            className: 'cursor-pointer inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium border border-green-200 hover:bg-green-100 transition-colors select-none',
+            className: `btn-${sheetId} cursor-pointer inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium border border-green-200 hover:bg-green-100 transition-colors select-none`,
             title: 'Toggle Sheet Preview'
           },
-          children: [{ type: 'text', value: '📊 Preview' }]
+          children: [
+            { type: 'element', tagName: 'span', properties: { className: 'text-preview inline' }, children: [{ type: 'text', value: '📊 Preview' }] },
+            { type: 'element', tagName: 'span', properties: { className: 'text-close hidden' }, children: [{ type: 'text', value: '📊 Close' }] }
+          ]
         }
       ];
 
@@ -178,24 +190,26 @@ function rewriteNodes (node: any, index: any, parent: any, linkNodeMapping: Map<
         parent.children.push({
           type: 'element',
           tagName: 'span',
-          properties: { className: 'block w-full mt-4' },
+          properties: { className: `iframe-${sheetId} hidden w-full aspect-video border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50 mb-4 mt-4` },
           children: [
             {
               type: 'element',
-              tagName: 'input',
-              properties: { type: 'checkbox', id: sheetId, className: 'hidden peer' },
-              children: []
+              tagName: 'style',
+              children: [{
+                type: 'text',
+                value: `
+                  body:has(#${sheetId}:checked) .btn-${sheetId} { background-color: #16a34a !important; color: white !important; border-color: #16a34a !important; }
+                  body:has(#${sheetId}:checked) .btn-${sheetId} .text-preview { display: none !important; }
+                  body:has(#${sheetId}:checked) .btn-${sheetId} .text-close { display: inline !important; }
+                  body:has(#${sheetId}:checked) .iframe-${sheetId} { display: block !important; }
+                `
+              }]
             },
             {
               type: 'element',
-              tagName: 'span',
-              properties: { className: 'hidden peer-checked:block w-full aspect-video border border-gray-300 rounded-lg overflow-hidden shadow-lg bg-gray-50 mb-4' },
-              children: [{
-                type: 'element',
-                tagName: 'iframe',
-                properties: { src: iframeUrl, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
-                children: []
-              }]
+              tagName: 'iframe',
+              properties: { src: iframeUrl, className: 'w-full h-full', frameBorder: '0', allowFullScreen: true },
+              children: []
             }
           ]
         });
