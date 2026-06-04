@@ -110,13 +110,13 @@ export function updateMarkdownLinks(markdown: string, currSlug: string) {
 }
 
 export function getProjectExplorerData() {
-  const allPosts = getAllPosts(['title', 'slug', 'content']);
+  const allPosts = getAllPosts(['title', 'slug', 'content', 'visibility']);
   const data = {
-    markdown: {} as Record<string, {title: string, url: string}[]>,
-    fusion: [] as {title: string, url: string}[],
-    github: [] as {title: string, url: string}[],
-    pdf: [] as {title: string, url: string}[],
-    sheets: [] as {title: string, url: string}[]
+    markdown: {} as Record<string, {title: string, url: string, visibility: string}[]>,
+    fusion: [] as {title: string, url: string, visibility: string}[],
+    github: [] as {title: string, url: string, visibility: string}[],
+    pdf: [] as {title: string, url: string, visibility: string}[],
+    sheets: [] as {title: string, url: string, visibility: string}[]
   };
 
   const seenFusion = new Set<string>();
@@ -125,12 +125,18 @@ export function getProjectExplorerData() {
   const seenSheets = new Set<string>();
 
   allPosts.forEach((p) => {
+    const visibility = p.visibility || 'authenticated';
+
     // 1. Group Markdown Files
     if (p.slug !== 'home' && !p.slug.includes('attachments/') && !p.slug.includes('public/')) {
       const parts = p.slug.split(path.sep);
       const folder = parts.length > 1 ? parts[0] : 'Root';
       if (!data.markdown[folder]) data.markdown[folder] = [];
-      data.markdown[folder].push({ title: p.title || p.slug.split('/').pop() || '', url: `/${p.slug}` });
+      data.markdown[folder].push({ 
+        title: p.title || p.slug.split('/').pop() || '', 
+        url: `/${p.slug}`,
+        visibility 
+      });
     }
 
     // 2. Extract External/Special Links
@@ -141,13 +147,13 @@ export function getProjectExplorerData() {
       const href = m[2];
 
       if (href.includes('a360.co') || href.includes('autodesk')) {
-        if (!seenFusion.has(href)) { seenFusion.add(href); data.fusion.push({ title: text, url: href }); }
+        if (!seenFusion.has(href)) { seenFusion.add(href); data.fusion.push({ title: text, url: href, visibility }); }
       } else if (href.includes('github.com')) {
-        if (!seenGithub.has(href)) { seenGithub.add(href); data.github.push({ title: text, url: href }); }
+        if (!seenGithub.has(href)) { seenGithub.add(href); data.github.push({ title: text, url: href, visibility }); }
       } else if (href.endsWith('.pdf')) {
-        if (!seenPdf.has(href)) { seenPdf.add(href); data.pdf.push({ title: text, url: href }); }
+        if (!seenPdf.has(href)) { seenPdf.add(href); data.pdf.push({ title: text, url: href, visibility }); }
       } else if (href.includes('docs.google.com/spreadsheets')) {
-        if (!seenSheets.has(href)) { seenSheets.add(href); data.sheets.push({ title: text, url: href }); }
+        if (!seenSheets.has(href)) { seenSheets.add(href); data.sheets.push({ title: text, url: href, visibility }); }
       }
     }
   });

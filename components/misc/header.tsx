@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react';
 import Search from './search';
+import { useAuth } from '../../context/AuthContext';
 
 const Header = ({ hasSidebars }: { hasSidebars?: boolean }) => {
   const [top, setTop] = useState(true);
   const [searching, setSearching] = useState(false);
+  const { user, logout } = useAuth();
+
   // detect whether user has scrolled the page down by 10px 
   useEffect(() => {
     const scrollHandler = () => {
@@ -31,6 +34,26 @@ const Header = ({ hasSidebars }: { hasSidebars?: boolean }) => {
             </h2>
           </div>
           <ul className="flex grow justify-end flex-wrap items-center">
+            {user && user.role === 'admin' && (
+              <li className="mx-2">
+                <Link href="/admin" className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                  Admin
+                </Link>
+              </li>
+            )}
+            {user ? (
+              <li className="mx-2">
+                <button onClick={logout} className="text-sm font-semibold text-gray-500 hover:text-black transition-colors">
+                  Sign Out
+                </button>
+              </li>
+            ) : (
+              <li className="mx-2">
+                <Link href="/login" className="text-sm font-semibold text-gray-500 hover:text-black transition-colors">
+                  Sign In
+                </Link>
+              </li>
+            )}
             <li>
               <button className="w-4 h-4 my-auto mx-2 border-black" aria-label="Search" onClick={() => setSearching(!searching)} disabled={searching}>
                 <svg className="w-4 h-4 fill-current text-gray-400" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">

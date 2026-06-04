@@ -12,29 +12,54 @@ import Link from 'next/link'
 import Cite from 'citation-js'
 import Backlinks from '../components/misc/backlinks'
 import markdownStyles from '../components/blog/markdown-styles.module.css' // FIXED: Brought back standard markdown CSS
+import { useAuth } from '../context/AuthContext'
+import visibilityMap from '../lib/visibility-map.json'
 
 // Directory Sub-Component
-const ProjectDirectory = ({ groupedNotes }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-10 w-full not-prose">
-    {groupedNotes && Object.entries(groupedNotes).map(([folder, notes]) => (
-      <div key={folder} className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-        <h3 className="text-xl font-bold text-gray-800 capitalize mb-3 border-b pb-2">
-          {folder === 'Root' ? 'General' : folder.replace('-', ' ')}
-        </h3>
-        <ul className="space-y-2">
-          {(notes as any[]).map(note => (
-            <li key={note.slug} className="flex items-start">
-              <span className="text-blue-500 mr-2">↳</span>
-              <Link href={`/${note.slug}`} className="text-gray-700 hover:text-blue-600 font-medium text-sm">
-                {note.title || note.slug.split('/').pop()}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ))}
-  </div>
-);
+const ProjectDirectory = ({ groupedNotes }) => {
+  const { user } = useAuth();
+
+  const canView = (slug: string) => {
+    const visibility = (visibilityMap as Record<string, string>)[slug] || 'authenticated';
+    if (visibility === 'public') return true;
+    if (!user) return false;
+    if (visibility === 'authenticated') return true;
+    if (visibility === 'admin') return user.role === 'admin';
+    return false;
+  };
+
+  const filteredNotes = groupedNotes
+    ? Object.entries(groupedNotes).reduce((acc, [folder, notes]) => {
+        const visibleNotes = (notes as any[]).filter(note => canView(note.slug));
+        if (visibleNotes.length > 0) {
+          acc[folder] = visibleNotes;
+        }
+        return acc;
+      }, {} as any)
+    : null;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-10 w-full not-prose">
+      {filteredNotes && Object.entries(filteredNotes).map(([folder, notes]) => (
+        <div key={folder} className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+          <h3 className="text-xl font-bold text-gray-800 capitalize mb-3 border-b pb-2">
+            {folder === 'Root' ? 'General' : folder.replace('-', ' ')}
+          </h3>
+          <ul className="space-y-2">
+            {(notes as any[]).map(note => (
+              <li key={note.slug} className="flex items-start">
+                <span className="text-blue-500 mr-2">↳</span>
+                <Link href={`/${note.slug}`} className="text-gray-700 hover:text-blue-600 font-medium text-sm">
+                  {note.title || note.slug.split('/').pop()}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 // Collapsible Section Helper Component
 const CollapsibleSection = ({ title, children, defaultOpen = true }) => {
@@ -56,6 +81,7 @@ const CollapsibleSection = ({ title, children, defaultOpen = true }) => {
 // Sidebar Sub-Component
 const ProjectSidebar = ({ data }: { data: any }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const toggle = () => setIsOpen(prev => !prev);
@@ -63,13 +89,43 @@ const ProjectSidebar = ({ data }: { data: any }) => {
     return () => window.removeEventListener('toggleLeftSidebar', toggle);
   }, []);
 
+  const canView = (url: string, itemVisibility?: string) => {
+    const slug = url.startsWith('/') ? url.slice(1) : url;
+    const visibility = itemVisibility || (visibilityMap as Record<string, string>)[slug] || 'authenticated';
+    if (visibility === 'public') return true;
+    if (!user) return false;
+    if (visibility === 'authenticated') return true;
+    if (visibility === 'admin') return user.role === 'admin';
+    return false;
+  };
+
+  const filteredMarkdown = data?.markdown
+    ? Object.entries(data.markdown).reduce((acc, [folder, links]) => {
+        const visibleLinks = (links as any[]).filter(link => canView(link.url, link.visibility));
+        if (visibleLinks.length > 0) {
+          acc[folder] = visibleLinks;
+        }
+        return acc;
+      }, {} as any)
+    : null;
+
+  const filterList = (list: any[]) => {
+    if (!list) return [];
+    return list.filter(item => canView(item.url, item.visibility));
+  };
+
+  const filteredFusion = filterList(data?.fusion);
+  const filteredGithub = filterList(data?.github);
+  const filteredSheets = filterList(data?.sheets);
+  const filteredPdf = filterList(data?.pdf);
+
   return (
     <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-gray-50 border-r border-gray-200 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col pt-24 pb-10 overflow-hidden ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
        <div className="flex-1 overflow-y-auto px-5 space-y-2">
         {/* Markdown Files */}
-            {data?.markdown && Object.keys(data.markdown).length > 0 && (
+            {filteredMarkdown && Object.keys(filteredMarkdown).length > 0 && (
             <CollapsibleSection title="Vault Pages">
-              {Object.entries(data.markdown).map(([folder, links]) => (
+              {Object.entries(filteredMarkdown).map(([folder, links]) => (
                 <div key={folder} className="mb-3">
                    <h4 className="text-sm font-semibold text-gray-800 capitalize mb-1">{folder === 'Root' ? 'General' : folder.replace('-', ' ')}</h4>
                    <ul className="ml-2 space-y-1 border-l-2 border-gray-200 pl-2">
@@ -87,63 +143,63 @@ const ProjectSidebar = ({ data }: { data: any }) => {
           )}
 
             {/* Fusion Files */}
-            {data?.fusion?.length > 0 && (
+            {filteredFusion && filteredFusion.length > 0 && (
               <CollapsibleSection title="Fusion 360 Models">
-               <ul className="space-y-1">
-                 {data.fusion.map((link: any, i: number) => (
-                   <li key={i}>
-                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
-                       {link.title}
-                     </a>
-                   </li>
-                 ))}
-               </ul>
-            </CollapsibleSection>
+                <ul className="space-y-1">
+                  {filteredFusion.map((link: any, i: number) => (
+                    <li key={i}>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                        {link.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
             )}
 
             {/* GitHub Links */}
-            {data?.github?.length > 0 && (
+            {filteredGithub && filteredGithub.length > 0 && (
               <CollapsibleSection title="GitHub Repositories">
-               <ul className="space-y-1">
-                 {data.github.map((link: any, i: number) => (
-                   <li key={i}>
-                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
-                       {link.title}
-                     </a>
-                   </li>
-                 ))}
-               </ul>
-            </CollapsibleSection>
+                <ul className="space-y-1">
+                  {filteredGithub.map((link: any, i: number) => (
+                    <li key={i}>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                        {link.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
             )}
 
             {/* Google Sheets */}
-            {data?.sheets?.length > 0 && (
+            {filteredSheets && filteredSheets.length > 0 && (
               <CollapsibleSection title="Google Sheets">
-               <ul className="space-y-1">
-                 {data.sheets.map((link: any, i: number) => (
-                   <li key={i}>
-                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
-                       {link.title}
-                     </a>
-                   </li>
-                 ))}
-               </ul>
-            </CollapsibleSection>
+                <ul className="space-y-1">
+                  {filteredSheets.map((link: any, i: number) => (
+                    <li key={i}>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                        {link.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
             )}
 
             {/* PDFs */}
-            {data?.pdf?.length > 0 && (
-             <CollapsibleSection title="Datasheets">
-               <ul className="space-y-1">
-                 {data.pdf.map((link: any, i: number) => (
-                   <li key={i}>
-                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
-                       {link.title}
-                     </a>
-                   </li>
-                 ))}
-               </ul>
-            </CollapsibleSection>
+            {filteredPdf && filteredPdf.length > 0 && (
+              <CollapsibleSection title="Datasheets">
+                <ul className="space-y-1">
+                  {filteredPdf.map((link: any, i: number) => (
+                    <li key={i}>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-blue-600 block truncate transition-colors">
+                        {link.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
             )}
          </div>
       </div>
