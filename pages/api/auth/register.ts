@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 4. Set HttpOnly Cookie
     res.setHeader(
       'Set-Cookie',
-      `session-token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800` // 7 days
+      `session-token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800` // 7 days
     );
 
     return res.status(200).json({

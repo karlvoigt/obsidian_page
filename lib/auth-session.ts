@@ -33,6 +33,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
       role: payload.role as 'admin' | 'authenticated'
     };
   } catch (err) {
+    console.error('JWT Verification failed. Secret length:', secretStr.length, 'Error:', err);
     return null;
   }
 }
