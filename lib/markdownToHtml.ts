@@ -180,11 +180,29 @@ function rewriteNodes (node: any, index: any, parent: any, linkNodeMapping: Map<
       const sheetId = 'sheet-' + Math.random().toString(36).substr(2, 9);
       
       let iframeUrl = href;
+      let gid: string | null = null;
+      const gidMatch = href.match(/[?&#]gid=([^&#]+)/);
+      if (gidMatch) {
+        gid = gidMatch[1];
+      }
+
       if (iframeUrl.includes('/edit')) {
         iframeUrl = iframeUrl.split('/edit')[0] + '/htmlembed';
       }
+
+      const params = [];
+      if (gid && !iframeUrl.includes('gid=')) {
+        params.push(`gid=${gid}`);
+      }
       if (!iframeUrl.includes('widget=')) {
-        iframeUrl += (iframeUrl.includes('?') ? '&' : '?') + 'widget=true&headers=false';
+        params.push('widget=true');
+      }
+      if (!iframeUrl.includes('headers=')) {
+        params.push('headers=false');
+      }
+
+      if (params.length > 0) {
+        iframeUrl += (iframeUrl.includes('?') ? '&' : '?') + params.join('&');
       }
 
       originalNode.properties = { ...originalNode.properties, className: 'text-blue-600 hover:underline mr-2' };
