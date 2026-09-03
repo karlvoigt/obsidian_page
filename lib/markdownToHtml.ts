@@ -13,7 +13,36 @@ import { renderToStaticMarkup } from "react-dom/server"
 import NotePreview from '../components/misc/note-preview'
 import { fromHtml } from 'hast-util-from-html'
 
+function cleanMath(markdown: string) {
+  // Fix block math: $$ ... $$
+  markdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (match, math) => {
+    let unescaped = math
+      .replace(/\\_/g, '_')
+      .replace(/\\\[/g, '[')
+      .replace(/\\\]/g, ']')
+      .replace(/\\</g, '<')
+      .replace(/\\>/g, '>')
+      .replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+    return '$$\n' + unescaped.trim() + '\n$$';
+  });
+
+  // Fix inline math: $ ... $
+  markdown = markdown.replace(/(^|[^\$])\$([^\$\n]+)\$(?!\$)/g, (match, prefix, math) => {
+    let unescaped = math
+      .replace(/\\_/g, '_')
+      .replace(/\\\[/g, '[')
+      .replace(/\\\]/g, ']')
+      .replace(/\\</g, '<')
+      .replace(/\\>/g, '>')
+      .replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+    return `${prefix}$${unescaped}$`;
+  });
+
+  return markdown;
+}
+
 export async function markdownToHtml(markdown: string, currSlug: string) {
+  markdown = cleanMath(markdown);
   markdown = updateMarkdownLinks(markdown, currSlug);
   const links = (getLinksMapping())[currSlug] as string[]
   const linkNodeMapping = new Map<string, Element>();
